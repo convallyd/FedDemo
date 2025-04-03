@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fed Decision Comparison</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .loading {
+            display: block;
+            margin-top: 10px;
+            color: #666;
+            text-align: center;
+            padding: 20px;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .fed-data {
+            margin-top: 20px;
+        }
+        .event-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .event-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .event-date {
+            color: #666;
+        }
+        .volume {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .event-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .markets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .market-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+        .outcome {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .probability {
+            font-size: 1.2em;
+            color: #007bff;
+            margin-bottom: 8px;
+        }
+        .price-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .change {
+            margin-top: 8px;
+            font-size: 0.9em;
+        }
+        .change.positive {
+            color: #28a745;
+        }
+        .change.negative {
+            color: #dc3545;
+        }
+        .last-updated {
+            text-align: right;
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .data-source {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .data-source a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .data-source a:hover {
+            text-decoration: underline;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .section-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        .section-source {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .section-source a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .section-source a:hover {
+            text-decoration: underline;
+        }
+        .data-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .data-source-label {
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .data-source-label.polymarket {
+            color: #007bff;
+        }
+        .data-source-label.cme {
+            color: #28a745;
+        }
+        .data-timestamp {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .data-timestamp .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .data-timestamp .dot.recent {
+            background-color: #28a745;
+        }
+        .data-timestamp .dot.older {
+            background-color: #ffc107;
+        }
+        .data-timestamp .dot.old {
+            background-color: #dc3545;
+        }
+        @media (max-width: 768px) {
+            .event-content, .data-comparison {
+                grid-template-columns: 1fr;
+            }
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .login-form {
+            display: flex;
+            flex-direction: column;
+        }
+        .login-input {
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .login-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .login-button:hover {
+            background-color: #0056b3;
+        }
+        .login-error {
+            color: #dc3545;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .main-content {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginContainer" class="login-container">
+        <h2>Fed Decision Comparison</h2>
+        <p>Please enter the password to access this page:</p>
+        <div class="login-form">
+            <input type="password" id="passwordInput" class="login-input" placeholder="Enter password">
+            <div id="loginError" class="login-error">Incorrect password. Please try again.</div>
+            <button id="loginButton" class="login-button">Login</button>
+        </div>
+    </div>
+
+    <div id="mainContent" class="main-content">
+        <div class="container">
+            <h1>Fed Decision Comparison</h1>
+            <div id="loading" class="loading">Loading data...</div>
+            <div id="status" class="status"></div>
+            
+            <div class="section-header">
+                <div class="section-title">Fed Decision Probability Comparison</div>
+                <div class="section-source">Sources: <a href="https://polymarket.com/" target="_blank">Polymarket</a> | <a href="https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html" target="_blank">CME Group</a></div>
+            </div>
+            <div id="fedData" class="fed-data"></div>
+        </div>
+    </div>
+
+    <script>
+        // Password protection
+        const PASSWORD = "fed2025"; // Simple password
+        const loginContainer = document.getElementById('loginContainer');
+        const mainContent = document.getElementById('mainContent');
+        const passwordInput = document.getElementById('passwordInput');
+        const loginButton = document.getElementById('loginButton');
+        const loginError = document.getElementById('loginError');
+
+        // Check if already logged in
+        if (sessionStorage.getItem('fedLoggedIn') === 'true') {
+            loginContainer.style.display = 'none';
+            mainContent.style.display = 'block';
+            fetchData();
+        }
+
+        loginButton.addEventListener('click', function() {
+            if (passwordInput.value === PASSWORD) {
+                sessionStorage.setItem('fedLoggedIn', 'true');
+                loginContainer.style.display = 'none';
+                mainContent.style.display = 'block';
+                fetchData();
+            } else {
+                loginError.style.display = 'block';
+                passwordInput.value = '';
+            }
+        });
+
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                loginButton.click();
+            }
+        });
+
+        // Define consistent colors for each outcome
+        const outcomeColors = {
+            "No change": "#007bff", // blue
+            "25 bps decrease": "#28a745", // green
+            "50+ bps decrease": "#ffc107", // yellow
+            "25+ bps increase": "#dc3545", // red
+            "default": "#6f42c1" // purple
+        };
+
+        function formatNumber(num) {
+            return new Intl.NumberFormat('en-US', {
+                maximumFractionDigits: 2
+            }).format(num);
+        }
+
+        function formatCurrency(num) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(num);
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        function getColorForOutcome(outcome) {
+            return outcomeColors[outcome] || outcomeColors.default;
+        }
+
+        function getTimeAgo(timestamp) {
+            if (!timestamp) return "Unknown";
+            
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffHours / 24);
+            
+            if (diffHours < 24) {
+                return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+            } else {
+                return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+            }
+        }
+
+        function getTimestampClass(timestamp) {
+            if (!timestamp) return "old";
+            
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            
+            if (diffHours < 6) {
+                return "recent";
+            } else if (diffHours < 24) {
+                return "older";
+            } else {
+                return "old";
+            }
+        }
+
+        function createBarChart(containerId, polymarketData, cmeData) {
+            const ctx = document.getElementById(containerId).getContext('2d');
+            
+            // Get all unique outcomes
+            const allOutcomes = [...new Set([
+                ...polymarketData.map(item => item.outcome),
+                ...cmeData.map(item => item.outcome)
+            ])];
+            
+            // Sort outcomes to ensure consistent order
+            allOutcomes.sort((a, b) => {
+                // Custom sorting to ensure "No change" is first
+                if (a === "No change") return -1;
+                if (b === "No change") return 1;
+                return a.localeCompare(b);
+            });
+            
+            // Prepare data for each dataset
+            const polymarketValues = allOutcomes.map(outcome => {
+                const item = polymarketData.find(d => d.outcome === outcome);
+                return item ? item.probabilityRaw * 100 : 0;
+            });
+            
+            const cmeValues = allOutcomes.map(outcome => {
+                const item = cmeData.find(d => d.outcome === outcome);
+                return item ? item.probabilityRaw * 100 : 0;
+            });
+            
+            // Get colors for each outcome
+            const colors = allOutcomes.map(outcome => getColorForOutcome(outcome));
+            
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: allOutcomes,
+                    datasets: [
+                        {
+                            label: 'Polymarket',
+                            data: polymarketValues,
+                            backgroundColor: colors.map(color => color + '80'), // Add transparency
+                            borderColor: colors,
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'CME FedWatch',
+                            data: cmeValues,
+                            backgroundColor: colors.map(color => color + '40'), // More transparency
+                            borderColor: colors,
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: false
+                        },
+                        y: {
+                            stacked: false,
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Probability (%)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.raw || 0;
+                                    return `${label}: ${value.toFixed(1)}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Mock CME data for demonstration
+        function getMockCMEData() {
+            return {
+                events: [
+                    {
+                        title: "Fed decision in May?",
+                        endDate: "5/7/2025",
+                        markets: [
+                            {
+                                outcome: "No change",
+                                probability: "75.2%",
+                                probabilityRaw: 0.752
+                            },
+                            {
+                                outcome: "25 bps decrease",
+                                probability: "22.1%",
+                                probabilityRaw: 0.221
+                            },
+                            {
+                                outcome: "50+ bps decrease",
+                                probability: "2.5%",
+                                probabilityRaw: 0.025
+                            },
+                            {
+                                outcome: "25+ bps increase",
+                                probability: "0.2%",
+                                probabilityRaw: 0.002
+                            }
+                        ]
+                    },
+                    {
+                        title: "Fed decision in June?",
+                        endDate: "6/18/2025",
+                        markets: [
+                            {
+                                outcome: "25 bps decrease",
+                                probability: "48.3%",
+                                probabilityRaw: 0.483
+                            },
+                            {
+                                outcome: "No change",
+                                probability: "46.7%",
+                                probabilityRaw: 0.467
+                            },
+                            {
+                                outcome: "50+ bps decrease",
+                                probability: "4.2%",
+                                probabilityRaw: 0.042
+                            },
+                            {
+                                outcome: "25+ bps increase",
+                                probability: "0.8%",
+                                probabilityRaw: 0.008
+                            }
+                        ]
+                    },
+                    {
+                        title: "Fed decision in July?",
+                        endDate: "7/30/2025",
+                        markets: [
+                            {
+                                outcome: "25 bps decrease",
+                                probability: "51.2%",
+                                probabilityRaw: 0.512
+                            },
+                            {
+                                outcome: "No change",
+                                probability: "43.8%",
+                                probabilityRaw: 0.438
+                            },
+                            {
+                                outcome: "50+ bps decrease",
+                                probability: "4.5%",
+                                probabilityRaw: 0.045
+                            },
+                            {
+                                outcome: "25+ bps increase",
+                                probability: "0.5%",
+                                probabilityRaw: 0.005
+                            }
+                        ]
+                    }
+                ],
+                lastUpdated: "4/2/2025, 11:55:48 PM"
+            };
+        }
+
+        function displayFedData(data) {
+            const fedDataDiv = document.getElementById('fedData');
+            let html = '';
+            
+            // Get CME data
+            const cmeData = getMockCMEData();
+            
+            // Match events by date
+            const matchedEvents = data.events.map(polymarketEvent => {
+                const cmeEvent = cmeData.events.find(e => e.endDate === polymarketEvent.endDate);
+                return {
+                    polymarket: polymarketEvent,
+                    cme: cmeEvent || null,
+                    date: polymarketEvent.endDate
+                };
+            });
+
+            matchedEvents.forEach((event, index) => {
+                const barChartId = `bar-chart-${index}`;
+                
+                html += `
+                    <div class="event-card">
+                        <div class="event-header">
+                            <div class="event-title">${event.polymarket.title}</div>
+                            <div class="event-date">${formatDate(event.date)}</div>
+                        </div>
+                        <div class="volume">Volume: ${formatCurrency(event.polymarket.volume)}</div>
+                        
+                        <h3>Probability Comparison</h3>
+                        <div class="chart-container">
+                            <canvas id="${barChartId}"></canvas>
+                        </div>
+                        
+                        <div class="data-comparison">
+                            <div>
+                                <div class="data-source-label polymarket">Polymarket Data</div>
+                                <div class="data-timestamp">
+                                    <span class="dot ${getTimestampClass(data.lastUpdated)}"></span>
+                                    <span>Last updated: ${getTimeAgo(data.lastUpdated)}</span>
+                                </div>
+                                <div class="markets-grid">
+                                    ${event.polymarket.markets.map(market => `
+                                        <div class="market-card">
+                                            <div class="outcome">${market.outcome}</div>
+                                            <div class="probability">${market.probability}</div>
+                                            <div class="price-info">
+                                                <div>Last Trade: ${formatCurrency(market.lastTradePrice)}</div>
+                                                <div>Bid/Ask: ${formatCurrency(market.bestBid)}/${formatCurrency(market.bestAsk)}</div>
+                                            </div>
+                                            ${market.oneDayChange ? `
+                                                <div class="change ${market.oneDayChange >= 0 ? 'positive' : 'negative'}">
+                                                    Change: ${market.oneDayChange >= 0 ? '+' : ''}${(market.oneDayChange * 100).toFixed(1)}%
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="data-source-label cme">CME FedWatch Data</div>
+                                <div class="data-timestamp">
+                                    <span class="dot old"></span>
+                                    <span>Last updated: ${getTimeAgo(cmeData.lastUpdated)}</span>
+                                </div>
+                                ${event.cme ? `
+                                    <div class="markets-grid">
+                                        ${event.cme.markets.map(market => `
+                                            <div class="market-card">
+                                                <div class="outcome">${market.outcome}</div>
+                                                <div class="probability">${market.probability}</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : '<p>No CME data available for this date</p>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `<div class="last-updated">Last Updated: ${data.lastUpdated} | CME Data: ${cmeData.lastUpdated}</div>`;
+            fedDataDiv.innerHTML = html;
+
+            // Create charts after the DOM is updated
+            matchedEvents.forEach((event, index) => {
+                const barChartId = `bar-chart-${index}`;
+                
+                // Create bar chart for comparison
+                if (event.cme) {
+                    createBarChart(barChartId, event.polymarket.markets, event.cme.markets);
+                }
+            });
+        }
+
+        async function fetchData() {
+            const loadingDiv = document.getElementById('loading');
+            const statusDiv = document.getElementById('status');
+            const fedDataDiv = document.getElementById('fedData');
+            const webhookUrl = "https://n8n.kube.convallyd.com/webhook/994088d7-40eb-4507-91fc-cf1e7ddaefbe";
+
+            try {
+                loadingDiv.style.display = 'block';
+                statusDiv.textContent = '';
+                statusDiv.className = 'status';
+                fedDataDiv.innerHTML = '';
+
+                const payload = {
+                    timestamp: new Date().toISOString(),
+                    message: "Webhook triggered",
+                    customField: "test value"
+                };
+
+                console.log("Fetching data from webhook...");
+                
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("Data received:", data);
+                
+                if (!data || !data.events || !Array.isArray(data.events)) {
+                    throw new Error("Invalid data format received from webhook");
+                }
+                
+                displayFedData(data);
+                
+                statusDiv.textContent = 'Data loaded successfully!';
+                statusDiv.className = 'status success';
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                
+                // Display mock data as fallback
+                console.log("Displaying mock data as fallback");
+                const mockData = {
+                    events: [
+                        {
+                            title: "Fed decision in May?",
+                            endDate: "5/7/2025",
+                            volume: 125000,
+                            markets: [
+                                {
+                                    outcome: "No change",
+                                    probability: "75.2%",
+                                    probabilityRaw: 0.752,
+                                    lastTradePrice: 0.75,
+                                    bestBid: 0.74,
+                                    bestAsk: 0.76,
+                                    oneDayChange: 0.02
+                                },
+                                {
+                                    outcome: "25 bps decrease",
+                                    probability: "22.1%",
+                                    probabilityRaw: 0.221,
+                                    lastTradePrice: 0.22,
+                                    bestBid: 0.21,
+                                    bestAsk: 0.23,
+                                    oneDayChange: -0.01
+                                },
+                                {
+                                    outcome: "50+ bps decrease",
+                                    probability: "2.5%",
+                                    probabilityRaw: 0.025,
+                                    lastTradePrice: 0.03,
+                                    bestBid: 0.02,
+                                    bestAsk: 0.04,
+                                    oneDayChange: 0.005
+                                },
+                                {
+                                    outcome: "25+ bps increase",
+                                    probability: "0.2%",
+                                    probabilityRaw: 0.002,
+                                    lastTradePrice: 0.01,
+                                    bestBid: 0.00,
+                                    bestAsk: 0.02,
+                                    oneDayChange: 0.001
+                                }
+                            ]
+                        },
+                        {
+                            title: "Fed decision in June?",
+                            endDate: "6/18/2025",
+                            volume: 98000,
+                            markets: [
+                                {
+                                    outcome: "25 bps decrease",
+                                    probability: "48.3%",
+                                    probabilityRaw: 0.483,
+                                    lastTradePrice: 0.48,
+                                    bestBid: 0.47,
+                                    bestAsk: 0.49,
+                                    oneDayChange: 0.03
+                                },
+                                {
+                                    outcome: "No change",
+                                    probability: "46.7%",
+                                    probabilityRaw: 0.467,
+                                    lastTradePrice: 0.47,
+                                    bestBid: 0.46,
+                                    bestAsk: 0.48,
+                                    oneDayChange: -0.02
+                                },
+                                {
+                                    outcome: "50+ bps decrease",
+                                    probability: "4.2%",
+                                    probabilityRaw: 0.042,
+                                    lastTradePrice: 0.04,
+                                    bestBid: 0.03,
+                                    bestAsk: 0.05,
+                                    oneDayChange: 0.01
+                                },
+                                {
+                                    outcome: "25+ bps increase",
+                                    probability: "0.8%",
+                                    probabilityRaw: 0.008,
+                                    lastTradePrice: 0.01,
+                                    bestBid: 0.00,
+                                    bestAsk: 0.02,
+                                    oneDayChange: 0.002
+                                }
+                            ]
+                        },
+                        {
+                            title: "Fed decision in July?",
+                            endDate: "7/30/2025",
+                            volume: 75000,
+                            markets: [
+                                {
+                                    outcome: "25 bps decrease",
+                                    probability: "51.2%",
+                                    probabilityRaw: 0.512,
+                                    lastTradePrice: 0.51,
+                                    bestBid: 0.50,
+                                    bestAsk: 0.52,
+                                    oneDayChange: 0.04
+                                },
+                                {
+                                    outcome: "No change",
+                                    probability: "43.8%",
+                                    probabilityRaw: 0.438,
+                                    lastTradePrice: 0.44,
+                                    bestBid: 0.43,
+                                    bestAsk: 0.45,
+                                    oneDayChange: -0.03
+                                },
+                                {
+                                    outcome: "50+ bps decrease",
+                                    probability: "4.5%",
+                                    probabilityRaw: 0.045,
+                                    lastTradePrice: 0.05,
+                                    bestBid: 0.04,
+                                    bestAsk: 0.06,
+                                    oneDayChange: 0.01
+                                },
+                                {
+                                    outcome: "25+ bps increase",
+                                    probability: "0.5%",
+                                    probabilityRaw: 0.005,
+                                    lastTradePrice: 0.01,
+                                    bestBid: 0.00,
+                                    bestAsk: 0.02,
+                                    oneDayChange: 0.001
+                                }
+                            ]
+                        }
+                    ],
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                displayFedData(mockData);
+                
+                // Show a more appropriate message for mock data
+                statusDiv.textContent = 'Using demonstration data (webhook unavailable)';
+                statusDiv.className = 'status';
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+
+        // Auto-refresh data every 5 minutes
+        setInterval(fetchData, 5 * 60 * 1000);
+    </script>
+</body>
+</html> 
